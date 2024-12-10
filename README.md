@@ -1,0 +1,2 @@
+# LunarBirthdayICSGenerator
+LunarBirthdayICSGenerator 是一个 Java 程序，用于根据用户输入的公历生日，自动生成未来指定年份的农历生日并将其导出为 ICS 格式的日历文件。用户可以手动输入或通过批量文件方式导入多个生日信息，程序会根据农历日期生成相应的公历日期，并支持设置提醒、事件描述、地点等信息。
