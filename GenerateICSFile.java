@@ -68,6 +68,10 @@ public class GenerateICSFile {
         }
 
         icsContent.append("END:VCALENDAR\n");
+        // 写入文件时强制使用 UTF-8 编码
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName, StandardCharsets.UTF_8))) {
+            writer.write(icsContent.toString());
+        }
 
         // 写入文件
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName, StandardCharsets.UTF_8))) {
@@ -116,6 +120,8 @@ public class GenerateICSFile {
 
         event.append("END:VEVENT\n");
         return event.toString();
+
+
     }
 
     /**

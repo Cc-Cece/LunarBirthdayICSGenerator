@@ -1,11 +1,12 @@
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Scanner;
 public class ManualLunarBirthdayICSGenerator {
     public static void main () throws IOException {
-        Scanner scanner = new Scanner(System.in);
+        Scanner scanner = new Scanner(System.in, StandardCharsets.UTF_8);
         // 用户输入姓名
         System.out.print("请输入姓名：");
         String name = scanner.nextLine();
