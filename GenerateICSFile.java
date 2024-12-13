@@ -9,55 +9,68 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
 public class GenerateICSFile {
+
     /**
      * 生成ICS文件的方法
-     *
-     * @param name              用户姓名
-     * @param birthDate         公历生日
-     * @param num               生成未来多少年
-     * @param state             忙碌状态
-     * @param location          事件地址
-     * @param remind            是否提醒
-     * @param remindTime        提醒时间
-     * @param remindDescription 提醒描述
-     * @param fileName          输出文件名
-     * @throws IOException 文件操作异常
      */
     public static void generateICSFile(String name, LocalDate birthDate, int num, String state, String location, boolean remind, String remindTime, String remindDescription, String fileName) throws IOException {
-        // 将公历转为农历
         Solar solarBirth = new Solar(birthDate.getYear(), birthDate.getMonthValue(), birthDate.getDayOfMonth());
         Lunar lunarBirth = solarBirth.getLunar();
         int lunarMonth = lunarBirth.getMonth();
         int lunarDay = lunarBirth.getDay();
+        boolean isLeapMonth = checkLeapMonth(lunarBirth, lunarMonth);
 
-        // 判断出生农历日期是否为闰月
+        StringBuilder icsContent = initializeICS();
+
+        // 处理出生年份的农历生日
+        addZeroYearEvent(icsContent, name, lunarBirth, state, location, remind, remindTime, remindDescription);
+
+        // 处理后续年份
+        addFutureEvents(icsContent, name, birthDate, num, lunarMonth, lunarDay, isLeapMonth, state, location, remind, remindTime, remindDescription);
+
+        finalizeICS(icsContent, fileName);
+    }
+
+    /**
+     * 检查农历日期是否为闰月
+     */
+    private static boolean checkLeapMonth(Lunar lunarBirth, int lunarMonth) {
         LunarMonth birthLunarMonth = LunarMonth.fromYm(lunarBirth.getYear(), lunarMonth);
-        boolean isLeapMonth = birthLunarMonth.isLeap();
+        return birthLunarMonth.isLeap();
+    }
 
-        // 构建ICS文件内容
+    /**
+     * 初始化ICS内容
+     */
+    private static StringBuilder initializeICS() {
         StringBuilder icsContent = new StringBuilder();
         icsContent.append("BEGIN:VCALENDAR\n");
         icsContent.append("VERSION:2.0\n");
         icsContent.append("CALSCALE:GREGORIAN\n");
+        return icsContent;
+    }
 
-        // 首先处理出生年份的农历生日（0岁）
+    /**
+     * 添加0岁的农历生日事件
+     */
+    private static void addZeroYearEvent(StringBuilder icsContent, String name, Lunar lunarBirth, String state, String location, boolean remind, String remindTime, String remindDescription) {
         try {
             Solar zeroYearSolar = lunarBirth.getSolar();
             icsContent.append(generateICSEvent(name, 0, lunarBirth, zeroYearSolar, state, location, remind, remindTime, remindDescription));
         } catch (IllegalArgumentException e) {
-            System.err.println("跳过出生年份的无效农历日期: " + e.getMessage());
+            System.err.println("跳过无效的农历日期: " + e.getMessage());
         }
+    }
 
-        // 处理后续年份
-        for (int i = 1; i < num; i++) {  // 从下一年开始
+    /**
+     * 添加未来年份的农历生日事件
+     */
+    private static void addFutureEvents(StringBuilder icsContent, String name, LocalDate birthDate, int num, int lunarMonth, int lunarDay, boolean isLeapMonth, String state, String location, boolean remind, String remindTime, String remindDescription) {
+        for (int i = 1; i < num; i++) {
             int year = birthDate.getYear() + i;
-
-            // 检查是否为有效闰月日期
-            LunarMonth currentLunarMonth = LunarMonth.fromYm(year, lunarMonth);
-            if (isLeapMonth && !currentLunarMonth.isLeap()) {
-                continue;  // 跳过不符合闰月条件的年份
+            if (shouldSkipLeapMonth(year, lunarMonth, isLeapMonth)) {
+                continue;
             }
-
             try {
                 Lunar lunarCurrent = new Lunar(year, lunarMonth, lunarDay);
                 Solar solarCurrent = lunarCurrent.getSolar();
@@ -66,14 +79,24 @@ public class GenerateICSFile {
                 System.err.println("跳过年份 " + year + " 的无效农历日期: " + e.getMessage());
             }
         }
+    }
 
-        icsContent.append("END:VCALENDAR\n");
-        // 写入文件时强制使用 UTF-8 编码
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName, StandardCharsets.UTF_8))) {
-            writer.write(icsContent.toString());
+    /**
+     * 检查是否需要跳过闰月年份
+     */
+    private static boolean shouldSkipLeapMonth(int year, int lunarMonth, boolean isLeapMonth) {
+        if (!isLeapMonth) {
+            return false;
         }
+        LunarMonth currentLunarMonth = LunarMonth.fromYm(year, lunarMonth);
+        return !currentLunarMonth.isLeap();
+    }
 
-        // 写入文件
+    /**
+     * 完成ICS文件的构建并写入文件
+     */
+    private static void finalizeICS(StringBuilder icsContent, String fileName) throws IOException {
+        icsContent.append("END:VCALENDAR\n");
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName, StandardCharsets.UTF_8))) {
             writer.write(icsContent.toString());
         }
@@ -120,8 +143,6 @@ public class GenerateICSFile {
 
         event.append("END:VEVENT\n");
         return event.toString();
-
-
     }
 
     /**
